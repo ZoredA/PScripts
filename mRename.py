@@ -54,7 +54,7 @@ class Rename():
 			except ValueError:
 				print("Enter a valid integer or nothing at all")
 				raise
-			if self.end_num < start_num:
+			if self.end_num < self.start_num:
 				raise ValueError("Ending number can not be less than the starting number")
 		else:
 			self.end_num = None
