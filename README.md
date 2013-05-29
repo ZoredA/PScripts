@@ -9,12 +9,16 @@ mRename
 Requirements:
 
 Python 3.X
+
 ImageMagick needs to be installed (not the Python library version, just the regular command line version).
+
 ImageMagick also needs to be added to the system path.
 
 The only ImageMagick command this script runs is:
 
+```bash
 mogrify -format jpg *.png
+```
 
 I really like using mPlayer/smPlayer for video playback. Unfortunately, a feauture
 that is lacking is the ability to give screen captures custom names.
