@@ -78,12 +78,13 @@ class Rename():
         for index, old_name in enumerate(image_file_iter):
             new_name = self.name_temp % index
             if new_name in existing_files:
-                print_str = "{0} {2} already exists in {3}. Skipping. This will be converted and deleted.".format(index, new_name, self.converted_path)
+                print_str = "{0} {2} already exists in {3}. Skipping. This will be converted and deleted.".format(index, new_name, converted_path)
+                print (print_str)
             else:
                 file_path = shutil.copyfile(os.path.join(self.screen_path, old_name), os.path.join(converted_path, new_name))
                 new_file_list.append(file_path)
                 #print_str = "{0} {1} {2} moved to {3}".format(index, old_name, new_name, file_path)
-            print (print_str)
+            
             
         
         #We assign this two class variables at the end for a theoretical 
