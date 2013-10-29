@@ -27,7 +27,7 @@ class Rename():
             return "th"
         return date_lookup_list[date_num % 10]
         
-    #Parses a file to get the shot number.
+    #Parses a file to get the shot number and returns true if in range.
     def check_num(self, file_string):
         x = self.p
         file_num = int(x.findall(file_string)[0])
@@ -38,16 +38,44 @@ class Rename():
             if file_num >= self.start_num and file_num <= self.end_num:
                 return True
         return False
-
+        
+    #Parses a file to get the shot number.
+    def get_num(self, file_string):
+        x = self.p
+        file_num = int(x.findall(file_string)[0])
+        return file_num
+        
+    #Goes through a collection of files and tries to find the largest possible integer.
+    #This helps us ensure that we don't overwrite previous extracts with the same name but updated
+    #number.
+    def get_max_num(self, file_coll):
+        x = self.p
+        max = 0
+        if isinstance(file_coll, str):
+            file_coll = [file_coll]
+        for file_string in file_coll:
+            temp = x.findall(file_string)
+            if not temp:
+                continue
+            file_num = int(temp[0])
+            if file_num > max:
+                max = file_num
+        return max
+    
     def get_input(self):
         print('Enter Name')
-        self.name_temp = '%s_%%s.png' % input('-> ')
-        print('Enter the starting screenshot number')
-        try:
-            self.start_num = int(input('-> '))
-        except ValueError:
-            print('Please enter a valid integer for starting number')
-            raise
+        self.folder_name = input('-> ')
+        self.name_temp = '%s %%s.png' % self.folder_name
+        print('Enter the starting screenshot number. If no number is set a value of 0 will be assumed.')
+        self.start_num = input('-> ')
+        if self.start_num:
+            try:
+                self.start_num = int(self.start_num)
+            except ValueError:
+                print('Please enter a valid integer for starting number')
+                raise
+        else:
+            self.start_num = 0
             
         print('Enter the ending screenshot number. Enter nothing if you don\'t wish to specify a range.')
         self.end_num = input('-> ')
@@ -62,38 +90,49 @@ class Rename():
         else:
             self.end_num = None
             
+        print('Enter y if you wish to delete the moved images')
+        if (input('-> ') == 'y'):
+            self.del_old = True
+        else:
+            self.del_old = False
+            
     def move_files(self):
         image_file_iter = (x for x in os.listdir(self.screen_path) if self.check_num(x))
         today = datetime.datetime.now()
         #We format the string to include th or tr or whatever else the day might need.
         folder_date = today.strftime('%d{0} %B %Y'.format(self.get_date_desc(today.day)))
-        converted_path = os.path.join(self.destination_path, folder_date)
+        converted_path = os.path.join(self.destination_path, folder_date, self.folder_name)
         existing_files = set()
         if os.path.exists(converted_path) is False:
-            os.mkdir(converted_path)
+            os.makedirs(converted_path)
         else:
             existing_files.update(os.listdir(converted_path))
         #We need to move each one of the image files.
         new_file_list = []
-        for index, old_name in enumerate(image_file_iter):
+        index = self.get_max_num(existing_files) + 1
+        for old_name in image_file_iter:
             new_name = self.name_temp % index
             if new_name in existing_files:
-                print_str = "{0} {2} already exists in {3}. Skipping. This will be converted and deleted.".format(index, new_name, converted_path)
+                print_str = "{0} {1} already exists in {2}. Skipping. This will be converted and deleted.".format(index, new_name, converted_path)
                 print (print_str)
             else:
-                file_path = shutil.copyfile(os.path.join(self.screen_path, old_name), os.path.join(converted_path, new_name))
+                old_path = os.path.join(self.screen_path, old_name)
+                file_path = shutil.copyfile(old_path, os.path.join(converted_path, new_name))
                 new_file_list.append(file_path)
                 #print_str = "{0} {1} {2} moved to {3}".format(index, old_name, new_name, file_path)
-            
-            
+                if self.del_old is True:
+                    #We delete the file.
+                    os.remove(old_path)
+            index += 1
         
-        #We assign this two class variables at the end for a theoretical 
+        #We assign this to two class variables at the end for a theoretical 
         #minor performance increase when working with large collections.
         self.converted_path = converted_path
         self.new_file_list = new_file_list
         
     def convert_files(self):
         os.chdir(self.converted_path)
+        print("Done Moving. Calling mogrify.")
         subprocess.call(['mogrify', '-format', 'jpg', '*.png'], shell = True)
         
     def delete_files(self):
