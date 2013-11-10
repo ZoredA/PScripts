@@ -1,13 +1,13 @@
 import os
 import shutil
 
-IMAGEPATH = [r"F:\Photographs"]
-OUTPUTPATH=r"E:\temp"
-TYPE=("jpg", "jpeg", "png")
+#IMAGEPATH = [r"F:\Photographs"]
+#OUTPUTPATH=r"E:\temp"
+#TYPE=("jpg", "jpeg", "png")
 
 class CopyImages:
     #empty dictates if empty directories should be copied or not.
-    def __init__(self, IMAGEPATHS, OUTPUTPATH, TYPE = ("jpg", "jpeg", "png"), empty = False):
+    def __init__(self, IMAGEPATHS, OUTPUTPATH, TYPE = ("jpg", "jpeg", "png"), empty = False, dupPrefix = None, dupHandle = None):
         if isinstance(IMAGEPATHS, str):
             self.IMAGEPATHS = [IMAGEPATHS]
         else:
@@ -21,13 +21,21 @@ class CopyImages:
         else:
             self.TYPE = TYPE
         self.empty = empty
+        self.dupSet = set()
         self.moveFile = self.noReplace
+        if dupHandle is None:
+            self.dupHandle = self.all
+        else:
+            self.dupHandle = self.noNameDup
+        self.prefix = dupPrefix
         
     def ignore(self, path, names):
         igList = []
         for name in names:
             namePath = os.path.join(path,name)
             if not os.path.isdir(namePath):
+                if not self.dupHandle(fil):
+                    igList.append(name)
                 if not name.lower().endswith( self.TYPE ):
                     igList.append(name)
             else:
@@ -42,7 +50,6 @@ class CopyImages:
     #This will copy a directories contents. If the original directory does not
     #exist, it will be created.
     def copyDirCont(self, dirPath):
-        r = 0
         #This gets us a file list consisting only of files that end with our specified type.
         fileList = [fil for fil in os.listdir(dirPath) if fil.lower().endswith( self.TYPE )]
         #If our original directory contains no file that we are interested in and we don't wish to create
@@ -55,10 +62,38 @@ class CopyImages:
         if not os.path.isdir(outputPath):
             os.makedirs(outputPath,exist_ok=True)
         for fil in fileList:
+            if not self.dupHandle(fileName = fil): continue
             fInputPath = os.path.join(dirPath, fil)
             fOutputPath = os.path.join(outputPath, fil)
             if not os.path.isdir(fInputPath):
                 self.moveFile(fInputPath, fOutputPath)
+    
+    #Instead of copying to a directory with the same name as the src, this function will attempt to get
+    #the file modified date and copy it accordingly.
+    #It will eliminate duplicates along the way...somehow.
+    def copyToDate(self, dirPath):
+        pass
+    
+    #Can be called by copyDirCont. In this case, we don't copy duplicate files based on their name.
+    #This is a bad function to use (since different images can have the same name) but it should
+    #work for simple tasks where you know the same name = same image OR you know that that condition is applicable to
+    #a set of images (i.e. Same name for a file with the prefix DSC_).
+    def noNameDup(self, fileName):
+        if self.prefix is not None:
+            if fileName.startswith(self.prefix):
+                if fileName in self.dupSet:
+                    return False
+                self.dupSet.add(fileName)
+            return True
+        else:
+            if fileName in self.dupSet:
+                return False
+            self.dupSet.add(fileName)
+            return True
+    
+    #Don't care about duplicates at all.
+    def all(self, fileName):
+        return True
     
     #A function of sorts that will be used to actually move a file.
     #This is dynamically chosen because we might change our mind on whether we want to overwrite files
@@ -76,7 +111,7 @@ class CopyImages:
                     self.copyDirCont(dirPath)
                 
     def run(self):
-        for curPath in IMAGEPATH:
+        for curPath in self.IMAGEPATHS:
             tempPath = os.path.splitdrive(curPath)[1].lstrip('\\\\').lstrip('\\')
             outputPath = os.path.join(self.OUTPUTPATH, tempPath)            
             if not os.path.exists(outputPath):
@@ -90,5 +125,6 @@ class CopyImages:
                         self.copyDirCont(dirPath)
     
 if __name__ == "__main__":
-    copyImageObj = CopyImages(IMAGEPATH, OUTPUTPATH, TYPE)
-    copyImageObj.run()
+    pass
+    #copyImageObj = CopyImages(IMAGEPATH, OUTPUTPATH, TYPE)
+    #copyImageObj.run()
