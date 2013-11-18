@@ -4,6 +4,7 @@ import datetime
 import re
 import shutil
 import subprocess
+import collections
 
 class Rename():
 
@@ -138,13 +139,160 @@ class Rename():
     def delete_files(self):
         for png_file in self.new_file_list:
             os.remove(png_file)
+    
+    #This function moves many different images. It is pretty simple and a bit of a hack because it just does the same thing many times.
+    #many_list is a list of dictionaries with each dictionary looking like this:
+    # {
+        # 'folder_name' : 'folder_name',
+        # 'start_num' : start_num,
+        # 'end_num' : end_num
+    # }
+    #end_num can be none and start_num should be 0 if no start num is needed.
+    #to_del is obviously what determines whether the original files will be deleted or not.
+    def start_many(self, many_list, del_old = False):
+        self.del_old = del_old;
+        #If many_list needs to be an iterable other than a string.
+        if not isinstance(many_list, collections.Iterable) or isinstance(many_list, str):
+            raise TypeError("Type Error. Expected an iterable but got %s." % type(many_list))
+        for to_do_dict in many_list:
+            self.folder_name = to_do_dict['folder_name']
+            #We might already be getting an int but just in case, we are going to cast it again. If it is bad input, it will
+            #get caught here.
+            self.start_num = int(to_do_dict['start_num'])
+            self.end_num = int(to_do_dict['end_num'])
+            self.run()
             
     def start(self):
         self.get_input()
+        self.run()
+        
+    def run(self):
         self.move_files()
         self.convert_files()
         self.delete_files()
+        
+#Parses the input args. At this point, all we care about is the presence of a file and a bool indicating whether we want to delete or not.
+def parse_file(args):
+    file_name = args[0]
+    if len(args) == 2:
+        if args[1] == 'd':
+            del_old = True
+        else:
+            raise TypeError("Second argument needs to be d (for deleting old images) or nothing at all.")
+    else:
+        print('Enter y if you wish to delete the moved images')
+        if (input('-> ') == 'y'):
+            del_old = True
+        else:
+            del_old = False
+    bad_chars = re.compile(r'[/\\?<>|]')
+    #complete_format = re.compile(r'[\w.\s\-_]+-?\s*:?\s*\d+\s*-?\d+')
+    
+    #Expected format for each line:
+    #folder_name:start_num-end_num
+    #This naturally means that you can not have a : in the file name.
+    #You can still have a "-" in the file_name because the split for that 
+    #should only happen on the part of the string that follows the colon.
+    #All spaces on the edges will be stripped but spaces in the middle make no difference.
+    #If you wish, you may omit the starting number and thus the starting number
+    #will become the previous line's ending number + 1.
+    #If there was no previous line, the starting number is 0.
+    #If you omit the ending number, then all of the remaining images will be moved.
+    #So, Name:N-M <-All images from N to M (inclusive) will be moved and converted. 
+    #Name:N <-All images from N to the end will be moved. Same as Name:N-
+    #Name:-M <-All images from 0 or the earliest possible number to M will be moved.
+    #Name <-Does all images from beginning to end.
+    #If an ending number is omitted then the script will perform a check:
+    #If there is a line after the current one then an error will be thrown.
+    #We will do this verification later on.
+    #Empty lines will be ignored and lines beginning with a # will also be ignored.
+    #If a # is desired at the beginning of the folder name, it must be escaped via a '\'.
+    #This requirement only applies to a # at the beginning of a folder name not in the middle of one.
+    #Yes, that means, you can't have comments on a line with data that needs parsing.
+    #Starting at 0 should not cause problems because the Rename() just checks to see if
+    #the current image number is greater than the starting number. It doesn't check to see if
+    #the starting number is the same as 0.
+    #TO DO: Add support for multiple image selections in one line.
+        #e.g. Valvrave the Liberator : -45 :56 - 78: 122-
+    many_list = []
+    num_ranges = []
+    with open(os.path.join('',file_name), 'r') as f_input:
+
+        for count, line in enumerate(f_input):
+            stripLine = line.strip()
+            if not stripLine: continue
+            if stripLine[0] == '#': continue
+            if stripLine[0] == '\\': stripLine = stripLine.lstrip('\\')
+            if bad_chars.search(stripLine):
+                raise ValueError("Line: %s contains invalid characters (one of /\?<>| )." % strpLine)
+            # Name = ''
+            # N = 0
+            # M = None
+            temp_list = [x.strip() for x in stripLine.split(':') if x.strip()]
+            temp_length = len(temp_list)
+            if temp_length == 2:
+                #We got a name as well as N or M or both.
+                Name = temp_list[0]
+                print(temp_list)
+                first_post_colon_char = temp_list[1][0]
+                if not first_post_colon_char:
+                    #We got (Name:). No M or N were specified.
+                    N = 0
+                    M = None
+                elif first_post_colon_char == '-':
+                    #We got just M. (Name: -M)
+                    M = int(temp_list[1][1:])
+                    N = 0
+                else:
+                    temp_list_two = [x.strip() for x in temp_list[1].split('-')]
+                    temp_length_two = len(temp_list_two)
+                    if temp_length_two == 2:
+                        #We possibly got both N and M. Or we got (Name: N-)
+                        N = int(temp_list_two[0])
+                        if temp_list_two[1]:
+                            #(Name: N-M)
+                            M = int(temp_list_two[1])
+                        else:
+                            #(Name: N-)
+                            M = None
+                    elif temp_length_two == 1:
+                        #There were no dashes. Thus we get just N.
+                        N = int(temp_list_two[0])
+                        M = None
+                    else:
+                        #We got more than one dash. The line wasn't formatted correctly.
+                        #We throw an error.
+                        raise ValueError("Line: %s has more than one '-'.")
+            elif temp_length == 1:
+                #We got just a name. The same as (Name:)
+                Name = stripLine
+                N = 0
+                M = None
+            else:
+                #We got more than one ':'.
+                #THIS IS PART OF THE TO DO CASE that has yet to be implemented.
+                #It will actually require quite a bit of reworking and factoring.
+                #We should make a separate function that parses anything post :
+                raise ValueError("Line: %s has more than one ':'.")
+            little_dict = \
+                {
+                    'folder_name' : Name,
+                    'start_num' : N,
+                    'end_num' : M
+                }
+            many_list.append(little_dict)
+            num_ranges.append( (N, M) )
+    print("Is this okay? Enter y for yes")
+    print(many_list)
+    if (input('-> ') == 'y'):
+        x = Rename()
+        x.start_many(many_list, del_old)
+    else:
+        return
     
 if __name__ == '__main__':
-    x = Rename()
-    x.start()
+    if len(sys.argv) > 1:
+        parse_file(sys.argv[1:])
+    else:    
+        x = Rename()
+        x.start()
