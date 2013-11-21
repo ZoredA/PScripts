@@ -5,7 +5,23 @@ import re
 import shutil
 import subprocess
 import collections
+import PrintDictionary
+import RangeWorks
 
+from colorama import init, Fore, Back, Style
+rename_format_dict = \
+    {
+        'str_format': "{_COUNTER:<30} {folder_name} from {start_num} to {end_num}",
+        'colors': \
+            {
+                'start_num': Fore.GREEN,
+                'end_num' : Fore.RED,
+                'folder_name' : [Fore.WHITE, Style.BRIGHT]
+            },
+        'count_start' : 1,
+        'default' : [Fore.YELLOW, Back.BLACK, Style.BRIGHT],
+        'str.format' : True,
+    }
 class Rename():
 
     def __init__(self):
@@ -62,8 +78,43 @@ class Rename():
             if file_num > max:
                 max = file_num
         return max
-    
+        
+    def get_static_input(self):
+        input_dict = {}
+        print('Enter Name')
+        input_dict['folder_name'] = input('-> ')
+        name_temp = '%s %%s.png' % self.folder_name
+        print('Enter the starting screenshot number. If no number is set a value of 0 will be assumed.')
+        input_dict['start_num'] = input('-> ')
+        if input_dict['start_num']:
+            try:
+                input_dict['start_num'] = int(input_dict['start_num'])
+            except ValueError:
+                print('Please enter a valid integer for starting number')
+                raise
+        else:
+            input_dict['start_num'] = 0
+            
+        print('Enter the ending screenshot number. Enter nothing if you don\'t wish to specify a range.')
+        input_dict['end_num'] = input('-> ')
+        if input_dict['end_num']:
+            try:
+                input_dict['end_num'] = int(input_dict['end_num'])
+            except ValueError:
+                print("Enter a valid integer or nothing at all")
+                raise
+            if input_dict['end_num'] < input_dict['start_num']:
+                raise ValueError("Ending number can not be less than the starting number")
+        else:
+            input_dict['end_num'] = None
+
+        return input_dict
+        
     def get_input(self):
+        # temp = self.get_static_input()
+        # self.folder_name = input_dict['folder_name']
+        # self.name_temp = '%s %%s.png' % self.folder_name
+        
         print('Enter Name')
         self.folder_name = input('-> ')
         self.name_temp = '%s %%s.png' % self.folder_name
@@ -282,13 +333,25 @@ def parse_file(args):
                 }
             many_list.append(little_dict)
             num_ranges.append( (N, M) )
+    
+    renameHandle = Rename()
+    if many_list[-1]['end_num'] is None:
+        maxNum = renameHandle.get_max_num(  os.listdir(renameHandle.screen_path)  )
+        print (renameHandle.screen_path)
+        many_list[-1]['end_num'] = maxNum
+    
+    x = RangeWorks.RangeWorks()
+    many_list_fixed = x.interpret_ranges_dict(many_list)
+    
     print("Is this okay? Enter y for yes")
-    print(many_list)
-    if (input('-> ') == 'y'):
-        x = Rename()
-        x.start_many(many_list, del_old)
-    else:
-        return
+    x = PrintDictionary.PrintDictionary()
+    x.print_dict(many_list_fixed, rename_format_dict)
+    # if (input('-> ') == 'y'):
+        # print('you said yes')
+        # x = Rename()
+        # #x.start_many(many_list, del_old)
+    # else:
+        # return
     
 if __name__ == '__main__':
     if len(sys.argv) > 1:
