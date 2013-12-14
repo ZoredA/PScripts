@@ -14,8 +14,8 @@ rename_format_dict = \
         'str_format': "{_COUNTER:<30} {folder_name} from {start_num} to {end_num}",
         'colors': \
             {
-                'start_num': Fore.GREEN,
-                'end_num' : Fore.RED,
+                'start_num': [Fore.GREEN,Style.BRIGHT],
+                'end_num' : [Fore.RED,Style.BRIGHT],
                 'folder_name' : [Fore.WHITE, Style.BRIGHT]
             },
         'count_start' : 1,
@@ -27,6 +27,7 @@ class Rename():
     def __init__(self):
         self.p = re.compile(r'\d+')
         self.set_paths()
+        self.date = False
         
     def set_paths(self):                       
         import configparser
@@ -83,7 +84,6 @@ class Rename():
         input_dict = {}
         print('Enter Name')
         input_dict['folder_name'] = input('-> ')
-        name_temp = '%s %%s.png' % self.folder_name
         print('Enter the starting screenshot number. If no number is set a value of 0 will be assumed.')
         input_dict['start_num'] = input('-> ')
         if input_dict['start_num']:
@@ -111,36 +111,37 @@ class Rename():
         return input_dict
         
     def get_input(self):
-        # temp = self.get_static_input()
-        # self.folder_name = input_dict['folder_name']
-        # self.name_temp = '%s %%s.png' % self.folder_name
-        
-        print('Enter Name')
-        self.folder_name = input('-> ')
+        input_dict = self.get_static_input()
+        self.folder_name = input_dict['folder_name']
         self.name_temp = '%s %%s.png' % self.folder_name
-        print('Enter the starting screenshot number. If no number is set a value of 0 will be assumed.')
-        self.start_num = input('-> ')
-        if self.start_num:
-            try:
-                self.start_num = int(self.start_num)
-            except ValueError:
-                print('Please enter a valid integer for starting number')
-                raise
-        else:
-            self.start_num = 0
+        self.end_num = input_dict['end_num']
+        
+        # print('Enter Name')
+        # self.folder_name = input('-> ')
+        # self.name_temp = '%s %%s.png' % self.folder_name
+        # print('Enter the starting screenshot number. If no number is set a value of 0 will be assumed.')
+        # self.start_num = input('-> ')
+        # if self.start_num:
+            # try:
+                # self.start_num = int(self.start_num)
+            # except ValueError:
+                # print('Please enter a valid integer for starting number')
+                # raise
+        # else:
+            # self.start_num = 0
             
-        print('Enter the ending screenshot number. Enter nothing if you don\'t wish to specify a range.')
-        self.end_num = input('-> ')
-        if self.end_num:
-            try:
-                self.end_num = int(self.end_num)
-            except ValueError:
-                print("Enter a valid integer or nothing at all")
-                raise
-            if self.end_num < self.start_num:
-                raise ValueError("Ending number can not be less than the starting number")
-        else:
-            self.end_num = None
+        # print('Enter the ending screenshot number. Enter nothing if you don\'t wish to specify a range.')
+        # self.end_num = input('-> ')
+        # if self.end_num:
+            # try:
+                # self.end_num = int(self.end_num)
+            # except ValueError:
+                # print("Enter a valid integer or nothing at all")
+                # raise
+            # if self.end_num < self.start_num:
+                # raise ValueError("Ending number can not be less than the starting number")
+        # else:
+            # self.end_num = None
             
         print('Enter y if you wish to delete the moved images')
         if (input('-> ') == 'y'):
@@ -151,9 +152,13 @@ class Rename():
     def move_files(self):
         image_file_iter = (x for x in os.listdir(self.screen_path) if self.check_num(x))
         today = datetime.datetime.now()
-        #We format the string to include th or tr or whatever else the day might need.
-        folder_date = today.strftime('%d{0} %B %Y'.format(self.get_date_desc(today.day)))
-        converted_path = os.path.join(self.destination_path, folder_date, self.folder_name)
+        
+        if self.date:
+            #We format the string to include th or tr or whatever else the day might need.
+            folder_date = today.strftime('%d{0} %B %Y'.format(self.get_date_desc(today.day)))
+            converted_path = os.path.join(self.destination_path, folder_date, self.folder_name)
+        else:
+            converted_path = os.path.join(self.destination_path, self.folder_name)
         existing_files = set()
         if os.path.exists(converted_path) is False:
             os.makedirs(converted_path)
@@ -188,6 +193,7 @@ class Rename():
         subprocess.call(['mogrify', '-format', 'jpg', '*.png'], shell = True)
         
     def delete_files(self):
+        print("Deleting files for run with name: %s" % self.folder_name )
         for png_file in self.new_file_list:
             os.remove(png_file)
     
@@ -211,6 +217,7 @@ class Rename():
             #get caught here.
             self.start_num = int(to_do_dict['start_num'])
             self.end_num = int(to_do_dict['end_num'])
+            self.name_temp = '%s %%s.png' % self.folder_name
             self.run()
             
     def start(self):
@@ -221,45 +228,12 @@ class Rename():
         self.move_files()
         self.convert_files()
         self.delete_files()
-        
-#Parses the input args. At this point, all we care about is the presence of a file and a bool indicating whether we want to delete or not.
-def parse_file(args):
-    file_name = args[0]
-    if len(args) == 2:
-        if args[1] == 'd':
-            del_old = True
-        else:
-            raise TypeError("Second argument needs to be d (for deleting old images) or nothing at all.")
-    else:
-        print('Enter y if you wish to delete the moved images')
-        if (input('-> ') == 'y'):
-            del_old = True
-        else:
-            del_old = False
+
+#Reads an input file and turns it into a list of dictionaries.
+#Each item corresponds to one entry in the file and has three fields:
+#folder_name, start_num and end_num
+def parse_file(file_name):
     bad_chars = re.compile(r'[/\\?<>|]')
-    #complete_format = re.compile(r'[\w.\s\-_]+-?\s*:?\s*\d+\s*-?\d+')
-    
-    #Expected format for each line:
-    #folder_name:start_num-end_num
-    #This naturally means that you can not have a : in the file name.
-    #You can still have a "-" in the file_name because the split for that 
-    #should only happen on the part of the string that follows the colon.
-    #All spaces on the edges will be stripped but spaces in the middle make no difference.
-    #If you wish, you may omit the starting number and thus the starting number
-    #will become the previous line's ending number + 1.
-    #If there was no previous line, the starting number is 0.
-    #If you omit the ending number, then all of the remaining images will be moved.
-    #So, Name:N-M <-All images from N to M (inclusive) will be moved and converted. 
-    #Name:N <-All images from N to the end will be moved. Same as Name:N-
-    #Name:-M <-All images from 0 or the earliest possible number to M will be moved.
-    #Name <-Does all images from beginning to end.
-    #If an ending number is omitted then the script will perform a check:
-    #If there is a line after the current one then an error will be thrown.
-    #We will do this verification later on.
-    #Empty lines will be ignored and lines beginning with a # will also be ignored.
-    #If a # is desired at the beginning of the folder name, it must be escaped via a '\'.
-    #This requirement only applies to a # at the beginning of a folder name not in the middle of one.
-    #Yes, that means, you can't have comments on a line with data that needs parsing.
     #Starting at 0 should not cause problems because the Rename() just checks to see if
     #the current image number is greater than the starting number. It doesn't check to see if
     #the starting number is the same as 0.
@@ -284,7 +258,6 @@ def parse_file(args):
             if temp_length == 2:
                 #We got a name as well as N or M or both.
                 Name = temp_list[0]
-                print(temp_list)
                 first_post_colon_char = temp_list[1][0]
                 if not first_post_colon_char:
                     #We got (Name:). No M or N were specified.
@@ -334,28 +307,84 @@ def parse_file(args):
             many_list.append(little_dict)
             num_ranges.append( (N, M) )
     
+    return many_list
+#Parses the input args. At this point, all we care about is the presence of a file and a bool indicating whether we want to delete or not.
+def work_with_file(args):
+    """
+    Expected format for each line:
+    folder_name:start_num-end_num
+    This naturally means that you can not have a : in the file name.
+    You can still have a "-" in the file_name because the split for that 
+    should only happen on the part of the string that follows the colon.
+    All spaces on the edges will be stripped but spaces in the middle make no difference.
+    If you wish, you may omit the starting number and thus the starting number
+    will become the previous line's ending number + 1.
+    If there was no previous line, the starting number is 0.
+    If you omit the ending number, then all of the remaining images will be moved.
+    So, Name:N-M <-All images from N to M (inclusive) will be moved and converted. 
+    Name:N <-All images from N to the end will be moved. Same as Name:N-
+    Name:-M <-All images from 0 or the earliest possible number to M will be moved.
+    Name <-Does all images from beginning to end.
+    If an ending number is omitted then the script will perform a check:
+    If there is a line after the current one then an error will be thrown.
+    We will do this verification later on.
+    Empty lines will be ignored and lines beginning with a # will also be ignored.
+    If a # is desired at the beginning of the folder name, it must be escaped via a '\'.
+    This requirement only applies to a # at the beginning of a folder/end image name not in the middle of one.
+    Yes, that means, you can't have comments on a line with data that needs parsing.
+    """
+    
+    file_name = args[0]
+    if len(args) == 2:
+        if args[1] == 'd':
+            del_old = True
+        else:
+            raise TypeError("Second argument needs to be d (for deleting old images) or nothing at all.")
+    else:
+        print('Enter y if you wish to delete the moved images')
+        if (input('-> ') == 'y'):
+            del_old = True
+        else:
+            del_old = False
+    
+    #complete_format = re.compile(r'[\w.\s\-_]+-?\s*:?\s*\d+\s*-?\d+')
+    
+    many_list = parse_file(file_name)
+    
     renameHandle = Rename()
     if many_list[-1]['end_num'] is None:
         maxNum = renameHandle.get_max_num(  os.listdir(renameHandle.screen_path)  )
         print (renameHandle.screen_path)
         many_list[-1]['end_num'] = maxNum
     
-    x = RangeWorks.RangeWorks()
-    many_list_fixed = x.interpret_ranges_dict(many_list)
+    rangeWorks = RangeWorks.RangeWorks()
+    printDict = PrintDictionary.PrintDictionary()
+    do_it = False
+    while ( not do_it):
+        many_list_fixed = rangeWorks.interpret_ranges_dict(many_list)
+        printDict.print_dict(many_list_fixed, rename_format_dict)
+        print("Is this okay? Enter y for yes. Enter a to add, r to reload, and n to exit.")
+        usr_input = input('-> ')
+        if usr_input == 'y':
+            do_it = True
+        elif usr_input == 'a':
+            temp = renameHandle.get_static_input()
+            many_list.append(temp)
+        elif usr_input == 'n':
+            print ("Exiting...")
+            break
+        elif usr_input == 'r':
+            print ("We are going to reload")
+            return False
     
-    print("Is this okay? Enter y for yes")
-    x = PrintDictionary.PrintDictionary()
-    x.print_dict(many_list_fixed, rename_format_dict)
-    # if (input('-> ') == 'y'):
-        # print('you said yes')
-        # x = Rename()
-        # #x.start_many(many_list, del_old)
-    # else:
-        # return
+    if do_it:
+        renameHandle.start_many(many_list_fixed, del_old)
+    return True
     
 if __name__ == '__main__':
     if len(sys.argv) > 1:
-        parse_file(sys.argv[1:])
+        while (not work_with_file(sys.argv[1:])):
+            pass
     else:    
         x = Rename()
         x.start()
