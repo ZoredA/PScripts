@@ -187,6 +187,8 @@ class Rename():
         self.converted_path = converted_path
         self.new_file_list = new_file_list
         
+    #TO DO: Somehow get this to only call mogrify on the files we just moved and NOT all the .png files in
+    #that folder....
     def convert_files(self):
         os.chdir(self.converted_path)
         print("Done Moving. Calling mogrify.")
@@ -289,7 +291,7 @@ def parse_file(file_name):
                         raise ValueError("Line: %s has more than one '-'.")
             elif temp_length == 1:
                 #We got just a name. The same as (Name:)
-                Name = stripLine
+                Name = temp_list[0]
                 N = 0
                 M = None
             else:
