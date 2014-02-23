@@ -152,7 +152,7 @@ class Rename():
                 new_file_list.append(file_path)
                 #print_str = "{0} {1} {2} moved to {3}".format(index, old_name, new_name, file_path)
                 if self.del_old is True:
-                    print("Deleting old files")
+                    #print("Deleting old files")
                     #We delete the file.
                     os.remove(old_path)
             index += 1
