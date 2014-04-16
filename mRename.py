@@ -115,7 +115,7 @@ class Rename():
         self.folder_name = input_dict['folder_name']
         self.name_temp = '%s %%s.png' % self.folder_name
         self.end_num = input_dict['end_num']
-        
+        self.start_num = input_dict['start_num']
         # print('Enter Name')
         # self.folder_name = input('-> ')
         # self.name_temp = '%s %%s.png' % self.folder_name
@@ -267,7 +267,11 @@ def parse_file(file_name):
                     M = None
                 elif first_post_colon_char == '-':
                     #We got just M. (Name: -M)
-                    M = int(temp_list[1][1:])
+                    try:
+                        M = int(temp_list[1][1:])
+                    except:
+                        print ("Bad line: %s with index : %s" % (line, count))
+                        raise
                     N = 0
                 else:
                     temp_list_two = [x.strip() for x in temp_list[1].split('-')]
@@ -299,7 +303,10 @@ def parse_file(file_name):
                 #THIS IS PART OF THE TO DO CASE that has yet to be implemented.
                 #It will actually require quite a bit of reworking and factoring.
                 #We should make a separate function that parses anything post :
-                raise ValueError("Line: %s has more than one ':'.")
+                #Note that there are cases where this can happen.
+                #e.g. Anime with names like: Sekai Seifuku: Bouryaku no Zvezda
+                #This just further complicates our logic...
+                raise ValueError("Line: %s has more than one ':'." % line)
             little_dict = \
                 {
                     'folder_name' : Name,
