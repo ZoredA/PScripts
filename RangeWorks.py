@@ -1,8 +1,21 @@
 from collections import Counter
+from collections import Iterable as collectionIterable
 from operator import itemgetter
 import copy
 #TO DO: Alternate, simpler fixer.
 #Zig Zags across list.
+
+class MisshapenError(Exception):
+    """An exception we raise when a collection is not uniform."""
+    def __init__(self, badCollection, desc = ''):
+        self.collection = badCollection
+        self.desc = desc
+        
+    def __str__(self):
+        if self.desc:
+            return "Collection: %s Description: %s" % (self.collection, self.desc)
+        return "Collection: %s Description: None" % (self.collection,)
+
 class RangeError(Exception):
     """An exception we raise when a range has a problem."""
     def __init__(self, start, end, desc = ''):
@@ -11,8 +24,8 @@ class RangeError(Exception):
         self.desc = desc
         
     def __str__(self):
-        if desc:
-            return "Start: %s, End: %s Description: %s" % (self.start, self.end, self.str)
+        if self.desc:
+            return "Start: %s, End: %s Description: %s" % (self.start, self.end, self.desc)
         return "Start: %s, End: %s Description: None" % (self.start, self.end)
         
 class RangeMismatchError(Exception):
@@ -93,7 +106,7 @@ class RangeWorks(object):
     #If there is one, it returns true, else it returns false.
     #Very inefficient.
     def check_collision(self, tup_col):
-        #Set 1 checks for any identical tupples.
+        #Set 1 checks for any identical tuples.
         set_one = set(tup_col)
         if len(set_one) != len(tup_col):
             return True;
@@ -109,7 +122,7 @@ class RangeWorks(object):
         #If the lists are identical, this will return False, else it will return true.
         return self.sorted_zero != self.sorted_one
 
-    #Fixes a list of tuples so that if the first index is exactly one above the previous one
+    #Fixes a list of tuples so that the first index is exactly one above the previous one
     #if the previous one is equal to self.default_start
     #Expects: [(0,45), (0,66)..]
     #and turns it into [(0,45), (46,66)..]
@@ -152,7 +165,7 @@ class RangeWorks(object):
     #Note that it will leave end_index as None in the last dict BUT if there is one more
     #then it will change that accordingly.
     #TO DO: Think about changing this to be more like the above in terms of how it does the copying.
-    #Though to be honest, this might actually be more effeficient but the behaviour is different in that if handle
+    #Though to be honest, this might actually be more efficient but the behaviour is different in that if handle
     #is shallow then this will modify the original dictionary. I guess that is unacceptable.
     def interpret_ranges_dict(self, dict_col, start_index = 'start_num', end_index = 'end_num', handle = copy.copy):
         if len(dict_col) == 1 or not dict_col:
@@ -242,6 +255,87 @@ class RangeWorks(object):
             #This tuple is valid but the next one has a default start value.
             return tup_to_check
 
+
+def collectionSize(someCollection, misshaped = True, countStrings = False, naive = False):
+    """Returns the dimensions of a given collection.
+    
+    This is a basic recursive function takes in a collection and tries to get its dimensions all the way down.
+    We pretend the input is a matrix and treat each entry as a row vector.
+    someCollection is the collection that is checked.
+    misShaped allows this to return the maximum size in either direction. i.e. your collection does not need to be uniform.
+    countStrings sets counting of strings as a collection. By default or if this is set to False, we count strings to be 1 item.
+    Likely very, very slow for large (in terms of nested-ness) collections. Please be careful when using.
+    
+    For improved performance, set naive to true, but please note that in this case, it won't check for the largest sub collection,
+    it will simple assume the largest one is the first one and return the size of that. Only use naive if you know the collection
+    is evenly distributed or you only care about the size of the first element. Note that setting naive to true will also
+    ignore whatever value you set for misshaped.
+    
+    IMPORTANT ASSUMPTION: The maximum size found is not necessarily indicative of the maximum size of its children.
+    For example:
+    [
+        [1,2,3],
+        [[4,5,6,7,8]]
+    ]
+    would return (2, (3, (1,))) which means the there are 2 elements in the outermost layer and the larger of the two has a size of 3 and the largest object
+    in here has a size of 1. You might instead have been expecting (2, (1, (5,))). This would be very important for cases like:
+    [
+        5, 
+        [
+            [4,5,6,7,8,9]
+        ]
+    ]
+    but we added an explicit check to try and prioritize the dimensionality of an iterable over a non iterable.
+    """
+    if isinstance(someCollection, str):
+        if countStrings : return (len(someCollection),)
+        else: return (1,)
+    if  not isinstance(someCollection, collectionIterable): 
+        return (1,)
+    
+    if not naive:
+        chosenIndex = None
+        largestSize = -1
+        smallestSize = float("inf")
+        prevIter = True #If the previous entry was not an iterable one, we set this to False.
+        for index, someVal in enumerate(someCollection):
+            curSize = -1
+            if isinstance(someVal, str):
+                if countStrings : 
+                    curSize = len(someVal)
+                    prevIter = True
+                else: 
+                    curSize = 1
+                    prevIter = False
+            elif not isinstance(someVal, collectionIterable): 
+                curSize = 1
+                prevIter = False
+            else:
+                curSize = len(someVal)
+                if not prevIter:
+                    #The previous value was not an iterable, so we give precedence to our selves.
+                    if curSize == largestSize:
+                        chosenIndex = index
+                prevIter = True
+                
+            if curSize > largestSize:
+                largestSize = curSize
+                chosenIndex = index
+            if curSize < smallestSize:
+                smallestSize = curSize
+        
+        if not misshaped:
+            if smallestSize != largestSize:
+                raise MisshapenError(someCollection, "Collection not uniform, but collectionSize called with misshaped = true")
+    else:
+        if len(someCollection) > 0:
+            chosenIndex = 0
+        
+    if chosenIndex is not None:
+        return (len(someCollection), collectionSize(someCollection[chosenIndex], misshaped, countStrings, naive) )
+    else:
+        return (len(someCollection),)
+            
 def verify(col, in_key_start = 0, in_key_end = 1):
     for index, item in enumerate(col):
         if index == 0: continue
