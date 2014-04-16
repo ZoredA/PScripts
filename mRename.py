@@ -114,35 +114,10 @@ class Rename():
         input_dict = self.get_static_input()
         self.folder_name = input_dict['folder_name']
         self.name_temp = '%s %%s.png' % self.folder_name
+        self.start_num = input_dict['start_num']
         self.end_num = input_dict['end_num']
         self.start_num = input_dict['start_num']
-        # print('Enter Name')
-        # self.folder_name = input('-> ')
-        # self.name_temp = '%s %%s.png' % self.folder_name
-        # print('Enter the starting screenshot number. If no number is set a value of 0 will be assumed.')
-        # self.start_num = input('-> ')
-        # if self.start_num:
-            # try:
-                # self.start_num = int(self.start_num)
-            # except ValueError:
-                # print('Please enter a valid integer for starting number')
-                # raise
-        # else:
-            # self.start_num = 0
-            
-        # print('Enter the ending screenshot number. Enter nothing if you don\'t wish to specify a range.')
-        # self.end_num = input('-> ')
-        # if self.end_num:
-            # try:
-                # self.end_num = int(self.end_num)
-            # except ValueError:
-                # print("Enter a valid integer or nothing at all")
-                # raise
-            # if self.end_num < self.start_num:
-                # raise ValueError("Ending number can not be less than the starting number")
-        # else:
-            # self.end_num = None
-            
+        
         print('Enter y if you wish to delete the moved images')
         if (input('-> ') == 'y'):
             self.del_old = True
@@ -178,6 +153,7 @@ class Rename():
                 new_file_list.append(file_path)
                 #print_str = "{0} {1} {2} moved to {3}".format(index, old_name, new_name, file_path)
                 if self.del_old is True:
+                    #print("Deleting old files")
                     #We delete the file.
                     os.remove(old_path)
             index += 1
@@ -195,7 +171,7 @@ class Rename():
         subprocess.call(['mogrify', '-format', 'jpg', '*.png'], shell = True)
         
     def delete_files(self):
-        print("Deleting files for run with name: %s" % self.folder_name )
+        print("Deleting png files for run with name: %s" % self.folder_name )
         for png_file in self.new_file_list:
             os.remove(png_file)
     
@@ -342,7 +318,8 @@ def work_with_file(args):
     This requirement only applies to a # at the beginning of a folder/end image name not in the middle of one.
     Yes, that means, you can't have comments on a line with data that needs parsing.
     """
-    
+    renameHandle = Rename()
+    print("Starting run. Moving files from %s to %s " % (renameHandle.screen_path, renameHandle.destination_path) )
     file_name = args[0]
     if len(args) == 2:
         if args[1] == 'd':
@@ -360,7 +337,7 @@ def work_with_file(args):
     
     many_list = parse_file(file_name)
     
-    renameHandle = Rename()
+    
     if many_list[-1]['end_num'] is None:
         maxNum = renameHandle.get_max_num(  os.listdir(renameHandle.screen_path)  )
         print (renameHandle.screen_path)
