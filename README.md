@@ -83,7 +83,6 @@ python rename.py [moveListFile]
 ```
 
 ###Future Plans:
-* Add command line parameters for name/start number/end number so it doesn't go ask the user for input.
 * Make the destination and perhaps even the source folder be configurable via command line parameters.
 * Add a command line _silent_ option.
 * Possibly make the output file name more flexible. Possibly add VLC style customizable syntax.
