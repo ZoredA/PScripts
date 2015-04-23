@@ -48,7 +48,10 @@ class Rename():
     #Parses a file to get the shot number and returns true if in range.
     def check_num(self, file_string):
         x = self.p
-        file_num = int(x.findall(file_string)[0])
+        tempList = x.findall(file_string)
+        if not tempList:
+            return False
+        file_num = int(tempList[0])
         if self.end_num is None:
             if  file_num >= self.start_num:
                 return True
@@ -75,7 +78,7 @@ class Rename():
             temp = x.findall(file_string)
             if not temp:
                 continue
-            file_num = int(temp[0])
+            file_num = int(temp[-1])  #Look at the number at the end of the name. Gets rid of bugs like Log Horizon 2 48 being read as 2.
             if file_num > max:
                 max = file_num
         return max
@@ -142,6 +145,7 @@ class Rename():
         #We need to move each one of the image files.
         new_file_list = []
         index = self.get_max_num(existing_files) + 1
+        undeleted_files = []
         for old_name in image_file_iter:
             new_name = self.name_temp % index
             if new_name in existing_files:
@@ -155,8 +159,16 @@ class Rename():
                 if self.del_old is True:
                     #print("Deleting old files")
                     #We delete the file.
-                    os.remove(old_path)
+                    try:
+                        os.remove(old_path)
+                    except Exception as e:
+                        undeleted_files.append( (old_path, e) )
             index += 1
+        if undeleted_files:
+            #Assumes all of the exceptions were for the same problem.
+            undeleted_files_list = [x[0] for x in undeleted_files]
+            print("Files not deleted:")
+            print(",".join(undeleted_files_list))
         
         #We assign this to two class variables at the end for a theoretical 
         #minor performance increase when working with large collections.
