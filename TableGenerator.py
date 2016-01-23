@@ -1,3 +1,4 @@
+#TO DO: Implement this.
 #If RangeWorks is not around, we are going to use this to get a user defined size for our table.
 def staticSize():
     pass
@@ -5,14 +6,16 @@ def staticSize():
 try:
     from RangeWorks import collectionSize as sizeGen
 except ImportError:
-    sizeGen = None
+    print("No RangeWorks found. Alternative not implemented yet.")
+    raise Exception("Can not generate table without RangeWorks.\n");
+    #sizeGen = None
 
 class TableGen:
     """This class is a quick and dirty HTML table generator. It uses either a list of rows or a list of columns to generate a simple html table."""
     #Quick HTML Table Generator
     TABLE_TEMPLATE = "<table> {0} \n</table>"
     ROW_TEMPLATE = "\n<tr> {0} \n</tr>"
-    COLUMN_TEMPLATE = "\n\t<td>{:^20}</td>"
+    COLUMN_TEMPLATE = '\n\t<td align="center">{:^20}</td>'
     
     def __init__(self, defaultForEmpty = ''):
         self.default = defaultForEmpty
@@ -140,28 +143,43 @@ Input Rules:
     retList = []
     userInput = "dummy"
     curItem = []
+    #There are two possibilities here.
+    #Either the user enters the table line by line
+    #or they copy paste from another file.
+    #We need to handle the two cases differently.
+    #With a better implementaion, we wouldn't need to, but no!
     while userInput != "\q":
         userInput = input('->')
-        if userInput == "\\n":
-            retList.append(curItem)
-            print("Moved to the next row/column.")
-            curItem = []
-        elif userInput == "\d":
-            print("Moved to the next row/column. Enter a default value for this row or column.")
-            retList.append(curItem)
-            curItem = []
-            userInput = input('->')
-            if userInput == "\q": break
-            #We append nothing but a single string for the case where we have a default value.
-            #This is a bit ugly because later on we have to do an explicit check.
-            retList.append(userInput)
-            print("Moved to the next row/column.")
-        elif userInput == "\q":
-            if curItem:
-                retList.append(curItem)
-            break
+        temp = userInput.split('\n') #Get input line by line.
+        if (len(temp) > 1):
+            #We make the assumption that they have only entered data.
+            #That is to say, we don't have special things like \d or \\n here.
+            #We also make the assumption that any malformed things (like a single space)
+            #are intentionally there.
+            print( "Got several lines of input" )
+            #print( temp )
+            curItem = temp.copy();
         else:
-            curItem.append(userInput)
+            if userInput == "\\n" or userInput == "\n":
+                retList.append(curItem)
+                print("Moved to the next row/column.")
+                curItem = []
+            elif userInput == "\d":
+                print("Moved to the next row/column. Enter a default value for this row or column.")
+                retList.append(curItem)
+                curItem = []
+                userInput = input('->')
+                if userInput == "\q": break
+                #We append nothing but a single string for the case where we have a default value.
+                #This is a bit ugly because later on we have to do an explicit check.
+                retList.append(userInput)
+                print("Moved to the next row/column.")
+            elif userInput == "\q":
+                if curItem:
+                    retList.append(curItem)
+                break
+            else:
+                curItem.append(userInput)
 
     tblGen = TableGen()
     
@@ -173,6 +191,11 @@ Input Rules:
     return retList
         
 if __name__ == '__main__':
-    #x = getInput()
-    #print(x)
-    pass
+    userInput = "t"
+    while userInput != "q":
+        if userInput == "t":
+            x = getInput()
+            print(x)
+        print( "Enter q to quit, t to print another table." )
+        userInput = input('->')
+    #pass

@@ -7,6 +7,7 @@ import subprocess
 import collections
 import PrintDictionary
 import RangeWorks
+import platform
 
 from colorama import init, Fore, Back, Style
 rename_format_dict = \
@@ -33,7 +34,8 @@ class Rename():
         import configparser
         config = configparser.ConfigParser()
         #CHANGE THESE TO A DIFFERENT DIRECTORY.        
-        config.read('rename.conf')
+        thisFileDirectory = os.path.dirname(os.path.realpath(__file__))
+        config.read(os.path.join(thisFileDirectory, 'rename.conf'))
         self.screen_path = os.path.join(config['Settings']['screenshot path'], '')
         self.destination_path = os.path.join(config['Settings']['destination path'], '')
 
@@ -48,6 +50,8 @@ class Rename():
     #Parses a file to get the shot number and returns true if in range.
     def check_num(self, file_string):
         x = self.p
+        if 'shot' not in file_string: 
+            return False
         file_num = int(x.findall(file_string)[0])
         if self.end_num is None:
             if  file_num >= self.start_num:
@@ -142,7 +146,8 @@ class Rename():
         #We need to move each one of the image files.
         new_file_list = []
         index = self.get_max_num(existing_files) + 1
-        for old_name in image_file_iter:
+        sortedList = sorted(image_file_iter)
+        for old_name in sortedList: 
             new_name = self.name_temp % index
             if new_name in existing_files:
                 print_str = "{0} {1} already exists in {2}. Skipping. This will be converted and deleted.".format(index, new_name, converted_path)
@@ -153,13 +158,13 @@ class Rename():
                 new_file_list.append(file_path)
                 #print_str = "{0} {1} {2} moved to {3}".format(index, old_name, new_name, file_path)
                 if self.del_old is True:
-                    #print("Deleting old files")
                     #We delete the file.
                     os.remove(old_path)
             index += 1
         
         #We assign this to two class variables at the end for a theoretical 
         #minor performance increase when working with large collections.
+        print(converted_path)
         self.converted_path = converted_path
         self.new_file_list = new_file_list
         
@@ -168,7 +173,10 @@ class Rename():
     def convert_files(self):
         os.chdir(self.converted_path)
         print("Done Moving. Calling mogrify.")
-        subprocess.call(['mogrify', '-format', 'jpg', '*.png'], shell = True)
+        if platform.system() == "Linux":
+            subprocess.call('mogrify -format jpg *.png', shell = True)
+        else:
+            subprocess.call(['mogrify', '-format', 'jpg', '*.png'], shell = True)
         
     def delete_files(self):
         print("Deleting png files for run with name: %s" % self.folder_name )
@@ -194,7 +202,10 @@ class Rename():
             #We might already be getting an int but just in case, we are going to cast it again. If it is bad input, it will
             #get caught here.
             self.start_num = int(to_do_dict['start_num'])
-            self.end_num = int(to_do_dict['end_num'])
+            if (to_do_dict['end_num'] == None):
+                self.end_num = None
+            else:
+                self.end_num = int(to_do_dict['end_num'])
             self.name_temp = '%s %%s.png' % self.folder_name
             self.run()
             
