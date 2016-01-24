@@ -231,6 +231,12 @@ class Rename():
                 self.end_num = None
             else:
                 self.end_num = int(to_do_dict['end_num'])
+            if 'sub_folder' in to_do_dict:
+                self.sub_folder = to_do_dict['sub_folder']
+                print("Sub Folder: %s " % self.sub_folder)
+            else:
+                self.sub_folder = None
+
             self.name_temp = '%s %%s.png' % self.folder_name
             self.run()
             

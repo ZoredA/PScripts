@@ -1,5 +1,10 @@
 #TO DO: Implement this.
 #If RangeWorks is not around, we are going to use this to get a user defined size for our table.
+#More important TODO:
+#Take a file for input and use advanced options like having hyperlinks and images.
+#(Images as in a URL reference to an image!)
+#Maybe even move the images to a folder for easy uploading...
+
 def staticSize():
     pass
 
@@ -198,4 +203,3 @@ if __name__ == '__main__':
             print(x)
         print( "Enter q to quit, t to print another table." )
         userInput = input('->')
-    #pass
