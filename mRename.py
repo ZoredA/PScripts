@@ -1,3 +1,9 @@
+#Copyright: Zored Ahmer
+#https://github.com/ZoredA/PScripts
+#This script is used for converting mPlayer screenshots from
+#png to jpeg. It also handles renaming and moving. It is pretty nifty
+#if I do say so!
+
 import sys
 import os
 import datetime
@@ -112,6 +118,11 @@ class Rename():
         else:
             input_dict['end_num'] = None
 
+        print('Optional: Enter a sub folder name.')
+        sub_folder = input('-> ')
+        if sub_folder:
+            input_dict['sub_folder'] = sub_folder
+
         return input_dict
         
     def get_input(self):
@@ -122,6 +133,11 @@ class Rename():
         self.end_num = input_dict['end_num']
         self.start_num = input_dict['start_num']
         
+        if 'sub_folder' in input_dict:
+            self.sub_folder = input_dict['sub_folder']
+        else:
+            self.sub_folder = None
+         
         print('Enter y if you wish to delete the moved images')
         if (input('-> ') == 'y'):
             self.del_old = True
@@ -137,7 +153,11 @@ class Rename():
             folder_date = today.strftime('%d{0} %B %Y'.format(self.get_date_desc(today.day)))
             converted_path = os.path.join(self.destination_path, folder_date, self.folder_name)
         else:
-            converted_path = os.path.join(self.destination_path, self.folder_name)
+            if self.sub_folder is None:
+                converted_path = os.path.join(self.destination_path, self.folder_name)
+            else:
+                converted_path = os.path.join(self.destination_path, self.folder_name, self.sub_folder)
+
         existing_files = set()
         if os.path.exists(converted_path) is False:
             os.makedirs(converted_path)
@@ -192,8 +212,13 @@ class Rename():
     # }
     #end_num can be none and start_num should be 0 if no start num is needed.
     #to_del is obviously what determines whether the original files will be deleted or not.
-    def start_many(self, many_list, del_old = False):
+    #screen_path_override can be set to a different path and the script will look 
+    #at the screen shots there instead of the path specified in rename.conf.
+    #This is mostly a hack used to facilitate mplay.py
+    def start_many(self, many_list, del_old = False, screen_path_override = False):
         self.del_old = del_old;
+        if screen_path_override is not False:
+            self.screen_path = os.path.join(screen_path_override, '')
         #If many_list needs to be an iterable other than a string.
         if not isinstance(many_list, collections.Iterable) or isinstance(many_list, str):
             raise TypeError("Type Error. Expected an iterable but got %s." % type(many_list))

@@ -33,3 +33,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Vim backup folder.
+.backup
+
+# mRename config file.
+rename.conf
